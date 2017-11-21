@@ -8,23 +8,14 @@ use Yii;
  * This is the model class for table "messages".
  *
  * @property integer $id
- * @property integer $reply_id
- * @property string $title
+ * @property integer $user_id
+ * @property integer $ticket_id
  * @property string $text
- * @property integer $status
- * @property integer $created_date
+ *
+ * @property Tickets $ticket
  */
 class Message extends \yii\db\ActiveRecord
 {
-	const STATUS_LOW    = 0;
-	const STATUS_NORMAL = 1;
-	const STATUS_HIGH   = 2;
-
-	private static $statuses = [
-        '0' => 'Low',
-		'1' => 'Normal',
-        '2' => 'High'
-    ];
     /**
      * @inheritdoc
      */
@@ -39,10 +30,10 @@ class Message extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['reply_id', 'status', 'created_date'], 'integer'],
-            [['title', 'text'], 'required'],
+            [['ticket_id', 'text', 'user_id'], 'required'],
+            [['ticket_id', 'user_id', 'created_date'], 'integer'],
             [['text'], 'string'],
-            [['title'], 'string', 'max' => 255],
+            [['ticket_id'], 'exist', 'skipOnError' => true, 'targetClass' => Ticket::className(), 'targetAttribute' => ['ticket_id' => 'id']],
         ];
     }
 
@@ -53,11 +44,22 @@ class Message extends \yii\db\ActiveRecord
     {
         return [
             'id' => 'ID',
-            'reply_id' => 'Reply ID',
-            'title' => 'Title',
+            'ticket_id' => 'Ticket ID',
+            'user_id' => 'User ID',
             'text' => 'Text',
-            'status' => 'Status',
-            'created_date' => 'Created Date',
         ];
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getTicket()
+    {
+        return $this->hasOne(Ticket::className(), ['id' => 'ticket_id']);
+    }
+
+    public function getUser()
+    {
+        return $this->hasOne(User::className(), ['id' => 'user_id']);
     }
 }
