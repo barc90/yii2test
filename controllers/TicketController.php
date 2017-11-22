@@ -13,6 +13,7 @@ use app\models\Ticket;
 use app\models\TicketSearch;
 use app\models\User;
 use app\models\Message;
+use yii\data\ActiveDataProvider;
 
 /**
  * TicketController implements the CRUD actions for Ticket model.
@@ -22,9 +23,9 @@ class TicketController extends Controller
     public function init() {
         parent::init();
        
-        if (Yii::$app->user->identity->role != User::ROLE_ADMIN) {
+      //  if (Yii::$app->user->identity->role != User::ROLE_ADMIN) {
       //      throw new ForbiddenHttpException('The requested page does not permitted');
-        }
+      //  }
     }
     /**
      * @inheritdoc
@@ -34,10 +35,10 @@ class TicketController extends Controller
         return [
             'access' => [
                 'class' => AccessControl::className(),
-                'only' => ['index'],
+                'only' => ['index', 'create', 'reply','submit','delete','update'],
                 'rules' => [
                     [
-                        'actions' => ['index'],
+                        'actions' => ['index', 'create', 'reply','submit','delete','update'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -58,37 +59,57 @@ class TicketController extends Controller
      */
     public function actionIndex()
     {
-        $searchModel = new TicketSearch();
-        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
+        if (Yii::$app->user->identity->role == User::ROLE_ADMIN) {
+            $searchModel = new TicketSearch();
+            $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
 
-        return $this->render('index', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
-        ]);
+            return $this->render('index', [
+                'searchModel' => $searchModel,
+                'dataProvider' => $dataProvider,
+            ]);
+        }
+        else {
+
+            $query = Ticket::find()->where(['user_id' => Yii::$app->user->id]);
+
+            $provider = new ActiveDataProvider([
+                'query' => $query,
+                'pagination' => [
+                    'pageSize' => 10,
+                ],
+                'sort' => [
+                    'defaultOrder' => [
+                        'created_date' => SORT_DESC,
+                    ]
+                ],
+            ]);
+
+            return $this->render('index_user', [
+                'dataProvider' => $provider,
+            ]);
+        }
     }
 
     public function actionReply($ticket_id)
     {
-         
         if (($ticket_model = Ticket::findOne($ticket_id)) !== null) {
-            if (Yii::$app->user->identity->role != User::ROLE_ADMIN || 
+            if (Yii::$app->user->identity->role != User::ROLE_ADMIN && 
                 Yii::$app->user->id != $ticket_model->user_id) {
                 throw new ForbiddenHttpException('The requested page does not permitted');
             }
             $message_model = new Message();
-            if ($ticket_model->load(Yii::$app->request->post()) &&  // get status
+            if ($ticket_model->load(Yii::$app->request->post()) &&  // get and save status
                 $ticket_model->save()
             ) {
                 $message_model->load(Yii::$app->request->post()); // get Text
-                $message_model->user_id = $ticket_model->user->id;
+                $message_model->user_id = Yii::$app->user->id;
                 $message_model->ticket_id = $ticket_model->id;
                 $message_model->created_date = time();
-                $message_model->save();
-                return $this->redirect(['view', 'id' => $ticket_model->id]);
-            } else {
-               
-            }
-
+                if ($message_model->save())
+                    Yii::$app->session->setFlash('success', "Message has been created");
+              //  return $this->refresh();
+     
+            } 
             return $this->render('reply', [
                 'ticket_model' => $ticket_model,
                 'message_model'=> $message_model
@@ -99,7 +120,18 @@ class TicketController extends Controller
     }
     public function actionSubmit()
     {
-        
+        $ticket_model = new Ticket();
+
+        if ($ticket_model->load(Yii::$app->request->post())) {
+            $ticket_model->user_id = Yii::$app->user->id;
+            $ticket_model->created_date = time();
+            if ($ticket_model->save())
+                Yii::$app->session->setFlash('success', "Ticket has been submited");     
+        } 
+
+        return $this->render('submit', [
+            'ticket_model' => $ticket_model,
+        ]);
     }
     /**
      * Displays a single Ticket model.
@@ -120,6 +152,11 @@ class TicketController extends Controller
      */
     public function actionCreate()
     {
+
+        if (Yii::$app->user->identity->role != User::ROLE_ADMIN) {
+            throw new ForbiddenHttpException('The requested page does not permitted');
+        }
+
         $model = new Ticket();
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
@@ -139,6 +176,10 @@ class TicketController extends Controller
      */
     public function actionUpdate($id)
     {
+        if (Yii::$app->user->identity->role != User::ROLE_ADMIN) {
+            throw new ForbiddenHttpException('The requested page does not permitted');
+        }
+
         $model = $this->findModel($id);
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
@@ -158,6 +199,10 @@ class TicketController extends Controller
      */
     public function actionDelete($id)
     {
+        if (Yii::$app->user->identity->role != User::ROLE_ADMIN) {
+            throw new ForbiddenHttpException('The requested page does not permitted');
+        }
+
         $this->findModel($id)->delete();
 
         return $this->redirect(['index']);

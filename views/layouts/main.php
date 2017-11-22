@@ -39,18 +39,26 @@ AppAsset::register($this);
         'options' => ['class' => 'navbar-nav navbar-right'],
         'items' => [
             ['label' => 'Home', 'url' => ['/site/index']],
-			[
-		        'label' => 'Messages',
-		        'url' => ['site/about'],
-		        'visible' => !Yii::$app->user->isGuest
-        	],
+            [
+                'label' => 'Users', 
+                'url' => ['/user/index'],
+                'visible' => !(Yii::$app->user->isGuest) && (Yii::$app->user->identity->role == User::ROLE_ADMIN)
+            ],
+            [
+                'label' => 'Tickets', 
+                'url' => ['/ticket/index'],
+                'visible' => !(Yii::$app->user->isGuest)
+            ],
 			[
 				'label' => 'Submit Ticket', 
-				'url' => ['/site/index'],
+				'url' => ['/ticket/submit'],
 				'visible' => !(Yii::$app->user->isGuest) && !(Yii::$app->user->identity->role == User::ROLE_ADMIN)
 			],
-            ['label' => 'About', 'url' => ['/site/about']],
-            ['label' => 'Contact', 'url' => ['/site/contact']],
+            [
+                'label' => 'Sign up', 
+                'url' => ['/site/signup'],
+                'visible' => Yii::$app->user->isGuest
+            ],
             Yii::$app->user->isGuest ? (
                 ['label' => 'Login', 'url' => ['/site/login']]
             ) : (
